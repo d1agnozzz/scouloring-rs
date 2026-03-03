@@ -40,7 +40,7 @@ pub fn load_all_palettes<P: AsRef<Path>>(
 #[derive(Debug)]
 pub struct Palette {
     pub name: String,
-    pub colors: Vec<Color>,
+    pub colors: Vec<Color<u8>>,
 }
 
 impl From<PaletteDto> for Palette {

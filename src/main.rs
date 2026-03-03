@@ -1,56 +1,33 @@
-use image::{ImageReader, Pixel, Rgb, Rgba, RgbaImage};
-use scouloring_rs::{
-    color::{Color, ColorOps},
-    palette::load_all_palettes,
-};
+use std::path;
+
+use image::{ConvertColorOptions, ImageReader, Pixel, Rgb, Rgba, RgbaImage};
+use rayon::result;
+use scouloring_rs::{color::Color, dithering_methods::*, palette::load_all_palettes};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let palettes = load_all_palettes("./palettes").unwrap();
-    println!("{:?}", palettes);
-    let img = ImageReader::open("./test3.png")?.decode()?.into_rgba8();
-    let mut res = RgbaImage::new(img.width(), img.height());
-    let palette = &palettes["rgbcmyk"].colors;
+    let filename = path::Path::new("astronaut.png");
+    let mut img = ImageReader::open(path::Path::new("./").join(filename))?.decode()?;
+    // img.convert_color_space(
+    //     image::metadata::Cicp::SRGB_LINEAR,
+    //     ConvertColorOptions::default(),
+    //     image::ColorType::Rgba8,
+    // );
+    let palette = &palettes["websafe"];
 
-    for (ix, iy, pix) in img.enumerate_pixels() {
-        let src = Rgba([pix.0[0], pix.0[1], pix.0[2], pix.0[3]]);
-        let mut noised = src;
-        let monorand = rand::random_range(-96..=96);
+    let mut results = Vec::new();
 
-        for (i, s) in noised.0.into_iter().enumerate() {
-            noised.0[i] = s.saturating_add_signed(monorand);
-        }
+    results.push(no_dither(&img.to_rgba8(), &palette.colors));
+    results.push(noise(&img.to_rgba8(), &palette.colors, 127, true));
+    results.push(error_diffusion(&img.to_rgba8(), &palette.colors));
 
-        let palette_distance = palette
-            .iter()
-            .map(|col| {
-                // let mut dist = 0;
-                // for (i, ch) in col.0 .0.into_iter().enumerate() {
-                //     if i > 2 {
-                //         continue;
-                //     }
-                //     if ch > src.0[i] {
-                //         dist += ((ch - src.0[i]) as usize).pow(2)
-                //     } else {
-                //         dist += ((src.0[i] - ch) as usize).pow(2)
-                //     }
-                // }
-                col.distance_to(&Color(noised))
-                // dist
-            })
-            .collect::<Vec<u32>>();
-
-        let closest_color = palette[palette_distance
-            .into_iter()
-            .enumerate()
-            .min_by_key(|(_idx, val)| *val)
-            .unwrap()
-            .0]
-            .0;
-
-        res.put_pixel(ix, iy, closest_color.to_rgba());
+    for (id, res) in results.iter().enumerate() {
+        let _ = res.save(format!(
+            "./_{}{}.png",
+            filename.file_stem().unwrap().to_str().unwrap(),
+            id,
+        ));
     }
-
-    res.save("./out4.png");
 
     Ok(())
 }
