@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clap = { version = "4.5.60", features = ["derive"] }
 hex_color = { version = "3.0.0", features = ["serde"] }
 image = { version = "0.25.9", features = ["rayon"] }
+itertools = "0.14.0"
 kd-tree = { version = "0.6.2", features = ["rayon"] }
 oklab = "1.1.2"
 rand = "0.10.0"

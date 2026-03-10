@@ -2,7 +2,7 @@ use hex_color::HexColor;
 use image::Rgba;
 
 // pub type Color = Rgba<u8>;
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Color<T>(pub Rgba<T>);
 
 impl kd_tree::KdPoint for Color<u8> {
@@ -49,7 +49,7 @@ impl Color<u8> {
         self.0[3]
     }
 
-    fn to_hex(&self) -> String {
+    pub fn to_hex(&self) -> String {
         format!("#{:02X}{:02X}{:02X}", self.r(), self.g(), self.b())
     }
     fn to_oklab(&self) -> oklab::Oklab {

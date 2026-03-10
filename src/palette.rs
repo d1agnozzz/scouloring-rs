@@ -6,14 +6,14 @@ use serde::{Deserialize, Serialize};
 use crate::color::{self, Color};
 
 #[derive(Debug, Serialize, Deserialize)]
-struct PaletteDto {
-    name: String,
-    colors: Vec<String>,
+pub struct PaletteDto {
+    pub name: String,
+    pub colors: Vec<String>,
 }
 
 pub fn load_all_palettes<P: AsRef<Path>>(
     dir: P,
-) -> Result<HashMap<String, Palette>, Box<dyn std::error::Error>> {
+) -> Result<HashMap<String, Palette>, std::io::Error> {
     let mut palettes = HashMap::new();
 
     let entries = fs::read_dir(dir)?;
