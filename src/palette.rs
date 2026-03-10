@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs, path::Path};
 use hex_color::HexColor;
 use serde::{Deserialize, Serialize};
 
-use crate::color::Color;
+use crate::color::{self, Color};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct PaletteDto {
@@ -43,15 +43,46 @@ pub struct Palette {
     pub colors: Vec<Color<u8>>,
 }
 
+pub struct FastPalette {
+    pub name: String,
+    pub colors: kd_tree::KdTree<Color<u8>>,
+}
+
+impl From<&Palette> for FastPalette {
+    fn from(p: &Palette) -> Self {
+        FastPalette {
+            name: p.name.clone(),
+            colors: kd_tree::KdTree::build_by(p.colors.clone(), |item1, item2, k| {
+                item1.0 .0[k].cmp(&item2.0 .0[k])
+            }),
+        }
+    }
+}
+
 impl From<PaletteDto> for Palette {
-    fn from(val: PaletteDto) -> Self {
+    fn from(dto: PaletteDto) -> Self {
         Palette {
-            name: val.name,
-            colors: val
+            name: dto.name,
+            colors: dto
                 .colors
                 .iter()
                 .map(|str| HexColor::parse(str).unwrap().into())
                 .collect(),
         }
+    }
+}
+impl Palette {
+    pub fn closest_color_id(&self, color: &Color<u8>, color_space: color::ColorSpace) -> usize {
+        self.colors
+            .iter()
+            .map(|c| c.distace_to(&color, color_space))
+            .enumerate()
+            .min_by(|(_, a), (_, b)| a.total_cmp(b))
+            .unwrap()
+            .0
+    }
+
+    pub fn closest_color(&self, color: &Color<u8>, color_space: color::ColorSpace) -> Color<u8> {
+        self.colors[self.closest_color_id(color, color_space)]
     }
 }

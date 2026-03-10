@@ -1,15 +1,35 @@
-use std::i64;
-
 use hex_color::HexColor;
 use image::Rgba;
 
 // pub type Color = Rgba<u8>;
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Color<T>(pub Rgba<T>);
+
+impl kd_tree::KdPoint for Color<u8> {
+    type Scalar = i32;
+
+    type Dim = typenum::U3;
+
+    fn at(&self, i: usize) -> Self::Scalar {
+        self.0 .0[i] as i32
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum ColorSpace {
+    RGB,
+    OKLab,
+}
 
 impl From<HexColor> for Color<u8> {
     fn from(value: HexColor) -> Self {
         Color(Rgba([value.r, value.g, value.b, value.a]))
+    }
+}
+
+impl From<Rgba<u8>> for Color<u8> {
+    fn from(value: Rgba<u8>) -> Self {
+        Color(value)
     }
 }
 
@@ -33,13 +53,20 @@ impl Color<u8> {
         format!("#{:02X}{:02X}{:02X}", self.r(), self.g(), self.b())
     }
     fn to_oklab(&self) -> oklab::Oklab {
-        oklab::linear_srgb_to_oklab(oklab::LinearRgb {
+        oklab::srgb_to_oklab(oklab::Rgb {
             r: self.r(),
             g: self.g(),
             b: self.b(),
         })
     }
-    pub fn oklab_distance(&self, other: &Self) -> f32 {
+    pub fn distace_to(&self, other: &Self, color_space: ColorSpace) -> f32 {
+        match color_space {
+            ColorSpace::RGB => self.rgb_distance(other),
+            ColorSpace::OKLab => self.oklab_distance(other),
+        }
+    }
+
+    fn oklab_distance(&self, other: &Self) -> f32 {
         let self_oklab = self.to_oklab();
         let other_oklab = other.to_oklab();
 
@@ -49,7 +76,7 @@ impl Color<u8> {
         .sqrt()
     }
 
-    pub fn rgb_distance(&self, other: &Self) -> u32 {
+    fn rgb_distance(&self, other: &Self) -> f32 {
         ((self
             .0
              .0
@@ -59,8 +86,8 @@ impl Color<u8> {
                 let diff = a.abs_diff(*b);
                 diff as u32 * diff as u32
             })
-            .sum::<u32>()) as f64)
-            .sqrt() as u32
+            .sum::<u32>()) as f32)
+            .sqrt()
     }
     fn sub(&self, other: &Self) -> Color<i16> {
         Color::<i16>(Rgba(
@@ -80,7 +107,7 @@ impl Color<u8> {
                  .0
                 .into_iter()
                 .zip(other.0 .0)
-                .map(|(a, b)| a as i64 + b as i64)
+                .map(|(a, b)| a as i64 + b)
                 .collect::<Vec<i64>>()
                 .try_into()
                 .unwrap(),
